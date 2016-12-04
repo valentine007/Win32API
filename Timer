@@ -1,0 +1,102 @@
+// Файл WINDOWS.H содержит определения, макросы, и структуры
+// которые используются при написании приложений под Windows.
+#include <windows.h>
+#include <tchar.h>
+#include <time.h>
+//прототип оконной процедуры
+LRESULT CALLBACK WindowProc(HWND, UINT, WPARAM, LPARAM);
+TCHAR szClassWindow[] = TEXT("Каркасное приложение"); /*Имя класса окна*/
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpszCmdLine,
+				   int nCmdShow)
+{
+	HWND hWnd;
+	MSG lpMsg;
+	WNDCLASSEX wcl;
+
+	/* 1. Определение класса окна */
+	wcl.cbSize = sizeof(wcl); 
+	wcl.style = CS_HREDRAW | CS_VREDRAW; // свойство окна
+
+	wcl.lpfnWndProc = WindowProc;
+	wcl.cbClsExtra = 0; // используется Windows
+	wcl.cbWndExtra = 0; // используется Windows
+	wcl.hInstance = hInst;
+	// загрузка стандартной иконки
+	wcl.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	// загрузка стандартного курсора
+	wcl.hCursor = LoadCursor(NULL, IDC_ARROW);
+	// заполнение окна белым цветом
+	wcl.hbrBackground = (HBRUSH) GetStockObject(WHITE_BRUSH);
+	wcl.lpszMenuName = NULL;
+	wcl.lpszClassName = szClassWindow;
+	wcl.hIconSm = NULL;
+
+	/* 2. Регистрация класса окна */
+	if (!RegisterClassEx(&wcl))
+		return 0;
+
+	/* 3. Создание окна */
+	//создается окно и переменной hWnd присваивается дескриптор окна
+	hWnd = CreateWindowEx(0, // расширенный стиль окна
+		szClassWindow, // имя класса окна
+		TEXT("Работа с таймером"), // заголовок окна
+		WS_OVERLAPPEDWINDOW, 
+		CW_USEDEFAULT, 
+		CW_USEDEFAULT, 
+		CW_USEDEFAULT,
+		CW_USEDEFAULT, 
+		NULL, 
+		NULL, 
+		hInst, // идентификатор приложения, создавшего окно
+		NULL);
+
+	/* 4. Отображение окна */
+	ShowWindow(hWnd, nCmdShow);
+	UpdateWindow(hWnd); // перерисовка окна
+	/* 5. Запуск цикла обработки сообщений */
+	// получение очередного сообщения из очереди сообщений
+	while(GetMessage(&lpMsg, NULL, 0, 0))
+	{
+		TranslateMessage(&lpMsg);
+		DispatchMessage(&lpMsg);
+	}
+	return lpMsg.wParam;
+}
+
+LRESULT CALLBACK WindowProc (HWND hWnd, UINT message, WPARAM wParam,
+							 LPARAM lParam)
+{
+	static time_t t;
+	static TCHAR str[100];
+	switch(message)
+	{
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+	case WM_TIMER:
+		// количество секунд, прошедших с 01.01.1970
+		t = time(NULL);
+		// формирование строки следующего формата:
+		// день месяц число часы:минуты:секунды год
+		lstrcpy(str, _tctime(&t));
+		str[lstrlen(str) - 1] = '\0';
+		// вывод даты и времени в заголовок окна
+		SetWindowText(hWnd, str);
+		break;
+	case WM_KEYDOWN:
+		// установка таймера по нажатию клавиши <ENTER>
+		if(wParam == VK_RETURN)
+			SetTimer(hWnd, 1, 1000, NULL);
+		// уничтожение таймера по нажатию клавиши <ESC>
+		else if(wParam == VK_ESCAPE)
+		{
+			KillTimer(hWnd, 1);
+			lstrcpy(str, TEXT("Отмена таймера"));
+			SetWindowText(hWnd, str);
+		}
+		break;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return 0;
+}
